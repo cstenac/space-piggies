@@ -23,12 +23,12 @@ import com.vividsolutions.jts.io.WKTReader;
 import com.vividsolutions.jts.io.WKTWriter;
 
 
-public class LineStringFromMultipoint extends EvalFunc<String> {
+public class LineFromMultipoint extends EvalFunc<String> {
     GeometryFactory f = new GeometryFactory();
     WKTReader reader = new WKTReader();
     WKTWriter writer = new WKTWriter();
 
-    public LineStringFromMultipoint() {
+    public LineFromMultipoint() {
         super();
     }
 
