@@ -13,8 +13,6 @@ import org.apache.pig.backend.hadoop.datastorage.ConfigurationUtil;
 import org.apache.pig.backend.hadoop.executionengine.physicalLayer.POStatus;
 import org.apache.pig.backend.hadoop.executionengine.physicalLayer.Result;
 import org.apache.pig.backend.hadoop.executionengine.physicalLayer.relationalOperators.POLoad;
-import org.apache.pig.builtin.LOG;
-import org.apache.pig.builtin.PigStorage;
 import org.apache.pig.data.BagFactory;
 import org.apache.pig.data.DataBag;
 import org.apache.pig.data.DataByteArray;
@@ -28,10 +26,8 @@ import org.apache.pig.impl.logicalLayer.schema.Schema;
 import org.apache.pig.impl.plan.NodeIdGenerator;
 import org.apache.pig.impl.plan.OperatorKey;
 
-import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.GeometryFactory;
-import com.vividsolutions.jts.geom.LineString;
 import com.vividsolutions.jts.index.quadtree.Quadtree;
 import com.vividsolutions.jts.io.ParseException;
 import com.vividsolutions.jts.io.WKTReader;
@@ -77,38 +73,39 @@ public class MultiIntersectionComputer extends EvalFunc<DataBag> {
         } catch (ParseException e) {
             throw new IOException("Could not read right geometries", e);
         }
-        
-        log.info("******* Matching tuple " + input);
 
         try {
             DataBag out = bf.newDefaultBag(); 
             String geomWKT = (String)input.get(1);
             Geometry leftGeom = reader.read(geomWKT);
 
+            @SuppressWarnings("unchecked")
             List<Tuple> tuples = index.query(leftGeom.getEnvelopeInternal());
-            log.info("** Potential matches for " + leftGeom +"  -> " + tuples.size());
-            
+            if (log.isDebugEnabled()) {
+                log.debug("** Potential matches for " + leftGeom +"  -> " + tuples.size());
+            }
+
             for (Tuple potentialMatch : tuples) {
                 Geometry intersection = leftGeom.intersection((Geometry)potentialMatch.get(2));
                 if (!intersection.isEmpty()) {
-                    log.info("Found true match");
+                    if (log.isDebugEnabled()) {
+                        log.debug("true match found");
+                    }
                     Tuple match = tf.newTuple();
                     match.append(new String(((DataByteArray)potentialMatch.get(0)).get(), "utf8"));
                     match.append(writer.write(intersection));
                     out.add(match);
-                } else {
-                    log.info("Bbox-only match");
                 }
             }
             return out;
         }
         catch (ClassCastException e) {
-            log.warn("unable to cast input "+input.get(0)+" of class "+
-                    input.get(0).getClass()+" to String");//, PigWarning.UDF_WARNING_1);
+            warn("unable to cast input "+input.get(0)+" of class "+
+                    input.get(0).getClass()+" to String", PigWarning.UDF_WARNING_1);
             return null;
         } 
         catch (ParseException e) {
-            log.warn("failed to read Point WKT from column", e);//, PigWarning.UDF_WARNING_1);
+            warn("failed to read Point WKT from column: " + e, PigWarning.UDF_WARNING_1);
             return null;
         }
         catch(Exception e){
